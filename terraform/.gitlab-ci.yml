@@ -1,0 +1,26 @@
+stages:
+  - train
+
+# Default region (you still need CI variables with creds + STATE_MACHINE_ARN)
+variables:
+  AWS_DEFAULT_REGION: "eu-central-1"
+
+# Run in the AWS CLI image and print who we are before each job
+default:
+  image: amazon/aws-cli:2.15.0
+  before_script:
+    - aws --version
+    - aws sts get-caller-identity
+
+train-model:
+  stage: train
+  rules:
+    # Run on every push
+    - if: '$CI_PIPELINE_SOURCE == "push"'
+  script:
+    - echo "Starting Step Function execution..."
+    - >
+      aws stepfunctions start-execution
+      --state-machine-arn "$STATE_MACHINE_ARN"
+      --name "train-$CI_PIPELINE_ID-$(date +%s)"
+      --input "{\"source\":\"gitlab-ci\",\"commit\":\"$CI_COMMIT_SHORT_SHA\",\"branch\":\"$CI_COMMIT_REF_NAME\"}"
