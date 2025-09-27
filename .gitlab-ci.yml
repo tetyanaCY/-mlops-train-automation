@@ -1,0 +1,27 @@
+stages:
+  - train
+
+# Опціонально: задаємо регіон за замовчуванням / Optionally set default region
+variables:
+  AWS_DEFAULT_REGION: "eu-central-1"
+  # Обов'язково додай CI змінну STATE_MACHINE_ARN у Settings > CI/CD > Variables
+  # Make sure to add STATE_MACHINE_ARN in GitLab CI/CD Variables.
+
+train-model:
+  stage: train
+  image: amazon/aws-cli:2.15.0
+  rules:
+    # Запускати при кожному push / Run on every push
+    - if: '$CI_PIPELINE_SOURCE == "push"'
+  script:
+    - echo "Starting Step Function execution..."
+    - |
+      aws stepfunctions start-execution \
+        --state-machine-arn "$STATE_MACHINE_ARN" \
+        --name "train-$CI_PIPELINE_ID-$(date +%s)" \
+        --input "{\"source\":\"gitlab-ci\",\"commit\":\"$CI_COMMIT_SHORT_SHA\",\"branch\":\"$CI_COMMIT_REF_NAME\"}"
+  # Для доступу до AWS використовуй:
+  # - AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY (+ AWS_DEFAULT_REGION),
+  #   або
+  # - OIDC з рольовим доступом (AWS_ROLE_ARN + AWS_WEB_IDENTITY_TOKEN_FILE)
+  # See README for details.
