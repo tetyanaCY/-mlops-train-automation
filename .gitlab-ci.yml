@@ -1,21 +1,19 @@
-stages: [train]
+stages:
+  - train
 
 variables:
   AWS_DEFAULT_REGION: "eu-central-1"
-  AWS_PAGER: ""  # no pager = no 252 exits
 
 train-model:
   stage: train
-  image:
-    name: amazon/aws-cli:2.15.0
-    entrypoint: [""]        # <--- REQUIRED
+  image: amazon/aws-cli:2.15.0
   rules:
     - if: '$CI_PIPELINE_SOURCE == "push"'
   script:
-    - aws --version
+    - echo "Region=$AWS_DEFAULT_REGION"
+    - echo "STATE_MACHINE_ARN=$STATE_MACHINE_ARN"
+    - aws configure list
     - aws sts get-caller-identity --no-cli-pager
-    - >
-      aws stepfunctions start-execution --no-cli-pager
-      --state-machine-arn "$STATE_MACHINE_ARN"
-      --name "train-$CI_PIPELINE_ID-$(date +%s)"
-      --input "{\"source\":\"gitlab-ci\",\"commit\":\"$CI_COMMIT_SHORT_SHA\",\"branch\":\"$CI_COMMIT_REF_NAME\"}"
+    - aws stepfunctions describe-state-machine --no-cli-pager --state-machine-arn "$STATE_MACHINE_ARN"
+    - aws stepfunctions get-resource-policy --no-cli-pager --resource-arn "$STATE_MACHINE_ARN" || echo "no resource policy"
+    - aws stepfunctions start-execution --no-cli-pager --state-machine-arn "$STATE_MACHINE_ARN" --name "train-$CI_PIPELINE_ID-$(date +%s)" --input "{\"source\":\"gitlab-ci\",\"commit\":\"$CI_COMMIT_SHORT_SHA\",\"branch\":\"$CI_COMMIT_REF_NAME\"}"
